@@ -3,17 +3,22 @@ import asyncio
 import datetime
 import platform
 import sys
+import time
+
 
 class ExchangeRateFetcher:
-    async def fetch(self, date):
-        url = f'http://api.nbp.pl/api/exchangerates/tables/A/{date}/'
+    async def fetch(self, start_date, end_date):
+        url = f'http://api.nbp.pl/api/exchangerates/tables/A/{start_date}/{end_date}/'
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(url) as response:
                     if response.status == 200:
                         data = await response.json()
-                        rates = {entry['code']: entry['mid'] for entry in data[0]['rates'] if entry['code'] in ['EUR', 'USD']}
-                        return rates
+                        rates_dict = {}
+                        for rates_entry in data[0]['rates']:
+                            if rates_entry['code'] in ['EUR', 'USD']:
+                                rates_dict[rates_entry['code']] = rates_entry['mid']
+                        return rates_dict
                     else:
                         print(f"Error status: {response.status} for {url}")
             except aiohttp.ClientConnectorError as err:
@@ -29,21 +34,26 @@ class DaysChecker:
             
 async def get_exchange_rates_for_last_n_days(fetcher, n):
     current_date = datetime.date.today()
-    exchange_rates = []
+    exchange_rates = {}
     for i in range(n):
         date = current_date - datetime.timedelta(days=i)
         formatted_date = date.strftime("%Y-%m-%d")
-        rates = await fetcher.fetch(formatted_date)
+        rates = await fetcher.fetch(formatted_date, formatted_date)
         if rates:
-            exchange_rates.append({formatted_date: rates})
+            exchange_rates[formatted_date] = rates
     return exchange_rates
 
 async def main(days):
+    start_time = time.time()
     fetcher = ExchangeRateFetcher()
     exchange_rates = await get_exchange_rates_for_last_n_days(fetcher, days)
-    
-    for item in exchange_rates:
-        print(item)
+
+    for date, rates in exchange_rates.items():
+        print(date, ":", rates)
+        
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Time: {execution_time}")
         
 if __name__ == "__main__":
     if platform.system() == 'Windows':
