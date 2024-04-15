@@ -49,7 +49,7 @@ async def main(days):
     exchange_rates = await get_exchange_rates_for_last_n_days(fetcher, days)
 
     for date, rates in exchange_rates.items():
-        print(date, ":", rates)
+        print(f"---{date} : USD:{rates["USD"]}, EUR: {rates["EUR"]}---")
         
     end_time = time.time()
     execution_time = end_time - start_time
